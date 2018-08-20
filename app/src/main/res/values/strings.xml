@@ -1,5 +1,9 @@
 <resources>
-    <string name="app_name">Questionaire</string>
+    <string name="app_name">Questionnaire</string>
     <string name="name">Name</string>
     <string name="submit">Submit</string>
+    <string name="skip">SKIP</string>
+    <string name="play">PLAY</string>
+    <string name="stop">STOP</string>
+    <string name="record">Record</string>
 </resources>

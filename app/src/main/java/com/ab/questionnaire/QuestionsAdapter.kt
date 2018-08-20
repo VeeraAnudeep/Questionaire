@@ -18,6 +18,8 @@ class QuestionsAdapter(val uploadList: UploadList) : RecyclerView.Adapter<Questi
 
     private var questions: ArrayList<Question> = ArrayList()
     private var myAudioRecorder: MediaRecorder? = null
+    private var recordingInProgress : Boolean = false
+    private var playingRecording: Boolean = false
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): QuestionViewHolder {
         return QuestionViewHolder(LayoutInflater.from(parent.context).inflate(R.layout
@@ -68,42 +70,63 @@ class QuestionsAdapter(val uploadList: UploadList) : RecyclerView.Adapter<Questi
             }
             notifyItemChanged(position)
         }
+        var mediaPlayer = MediaPlayer()
         holder.itemView.button.setOnClickListener {
-            holder.itemView.stop.visibility = View.VISIBLE
-            holder.itemView.button.visibility = View.GONE
-            holder.itemView.skip.visibility = View.GONE
-            myAudioRecorder = MediaRecorder()
-            myAudioRecorder?.setAudioSource(MediaRecorder.AudioSource.MIC)
-            myAudioRecorder?.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS)
-            myAudioRecorder?.setAudioEncoder(MediaRecorder.OutputFormat.AMR_NB)
-            myAudioRecorder?.setOutputFile(outputFile)
-            myAudioRecorder?.prepare()
-            myAudioRecorder?.start()
-            questionObject.setInRecording(true)
-            notifyItemChanged(position)
+            if(!playingRecording) {
+                holder.itemView.stop.visibility = View.VISIBLE
+                holder.itemView.button.visibility = View.GONE
+                holder.itemView.skip.visibility = View.GONE
+                myAudioRecorder = MediaRecorder()
+                myAudioRecorder?.setAudioSource(MediaRecorder.AudioSource.MIC)
+                myAudioRecorder?.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS)
+                myAudioRecorder?.setAudioEncoder(MediaRecorder.OutputFormat.AMR_NB)
+                myAudioRecorder?.setOutputFile(outputFile)
+                myAudioRecorder?.prepare()
+                myAudioRecorder?.start()
+                recordingInProgress = true
+                questionObject.setInRecording(true)
+                notifyItemChanged(position)
+            }
         }
         holder.itemView.stop.setOnClickListener {
-            myAudioRecorder?.stop()
-            myAudioRecorder?.release()
-            myAudioRecorder = null
-            questionObject.setRecorded(true)
-            holder.itemView.stop.visibility = View.GONE
-            holder.itemView.play.visibility = View.VISIBLE
-            if (position != questions.size - 1) {
-                questions[position + 1].setCanAttempt(true)
-                notifyItemChanged(position+1)
+            if(playingRecording){
+                mediaPlayer.stop()
+                mediaPlayer.release()
+                playingRecording = false
+                holder.itemView.stop.visibility = View.GONE
+                holder.itemView.play.visibility = View.VISIBLE
+            }else if(recordingInProgress) {
+                myAudioRecorder?.stop()
+                myAudioRecorder?.release()
+                myAudioRecorder = null
+                recordingInProgress = false
+                questionObject.setRecorded(true)
+                holder.itemView.stop.visibility = View.GONE
+                holder.itemView.play.visibility = View.VISIBLE
+                if (position != questions.size - 1) {
+                    questions[position + 1].setCanAttempt(true)
+                    notifyItemChanged(position + 1)
+                }
+                uploadList.setFileURI(outputFile)
             }
-            uploadList.setFileURI(outputFile)
             notifyItemChanged(position)
         }
         holder.itemView.play.setOnClickListener {
-            val mediaPlayer = MediaPlayer()
             try {
-                mediaPlayer.setDataSource(outputFile)
-                mediaPlayer.prepare()
-                mediaPlayer.start()
-                mediaPlayer.setOnCompletionListener { mediaPlayer2 ->
-                    mediaPlayer2.release()
+                if(!recordingInProgress) {
+                    mediaPlayer = MediaPlayer()
+                    mediaPlayer.setDataSource(outputFile)
+                    mediaPlayer.prepare()
+                    mediaPlayer.start()
+                    holder.itemView.stop.visibility = View.VISIBLE
+                    holder.itemView.play.visibility = View.GONE
+                    playingRecording = true
+                    mediaPlayer.setOnCompletionListener { mediaPlayer2 ->
+                        playingRecording = false
+                        mediaPlayer2.release()
+                        holder.itemView.play.visibility = View.VISIBLE
+                        holder.itemView.stop.visibility = View.GONE
+                    }
                 }
             } catch (e: Exception) {
                 // make something
