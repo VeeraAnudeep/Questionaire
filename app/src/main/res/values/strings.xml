@@ -6,4 +6,6 @@
     <string name="play">PLAY</string>
     <string name="stop">STOP</string>
     <string name="record">Record</string>
+    <string name="re_record">Re-Record</string>
+    <string name="phone">File Name</string>
 </resources>

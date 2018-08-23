@@ -23,13 +23,14 @@ import java.io.File
 
 
 class MainActivity : AppCompatActivity(), UploadList {
-    override fun setFileURI(filePath: String) {
-        responses.add(Uri.fromFile(File(filePath)))
+    override fun setFileURI(filePath: String, questionIndex: Int) {
+        responses[questionIndex] = Uri.fromFile(File(filePath))
+        submit.visibility = View.VISIBLE
     }
-
+    private val PHONE_MATCHER = "\\d{10}"
     private var mStorageRef: StorageReference? = null
     private var adapter: QuestionsAdapter? = null
-    private var responses: ArrayList<Uri> = ArrayList()
+    private var responses: HashMap<Int,Uri> = HashMap()
     val TAG: String = "Here"
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,15 +53,15 @@ class MainActivity : AppCompatActivity(), UploadList {
         fetchQuestions()
 
         submit.setOnClickListener {
-            if(editText.text.trim().toString().isNotEmpty()) {
-                submit.text = "Submitting.."
-                uploadFiles(editText.text.trim().toString().toLowerCase())
+            if(editText.text.trim().toString().isNotEmpty()
+                    && file_name.text.trim().toString().isNotEmpty()) {
+                    uploadFiles(editText.text.trim().toString().toLowerCase(), file_name.text.trim().toString())
             }else{
-                Toast.makeText(applicationContext,"Please enter name",Toast.LENGTH_LONG).show()
+                Toast.makeText(applicationContext,"Please enter all details",Toast.LENGTH_LONG)
+                        .show()
             }
         }
     }
-
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
@@ -99,8 +100,8 @@ class MainActivity : AppCompatActivity(), UploadList {
                             questionArray.add(questionItem)
                         }
                         adapter?.setQuestions(questions = questionArray)
-                        submit.visibility = View.VISIBLE
                         editText.visibility = View.VISIBLE
+                        file_name.visibility = View.VISIBLE
                     }
 
                     override fun onCancelled(databaseError: DatabaseError) {
@@ -110,19 +111,27 @@ class MainActivity : AppCompatActivity(), UploadList {
     }
 
 
-    private fun uploadFiles(toString: String) {
-        for ((index, file) in responses.withIndex()) {
-            val responseRef = mStorageRef?.child("response_$toString")?.child("q_${index + 1}.aac")
-            responseRef?.putFile(file)
-                    ?.addOnSuccessListener(OnSuccessListener<UploadTask.TaskSnapshot> { taskSnapshot ->
-                        // Get a URL to the uploaded content
-                        submit.text = "Resubmit!"
-                        Toast.makeText(applicationContext, "Success", Toast.LENGTH_LONG).show()
-                    })
-                    ?.addOnFailureListener(OnFailureListener {
-                        // Handle unsuccessful uploads
-                        // ...
-                    })
+    private fun uploadFiles(toString: String, phone: String) {
+        if(responses.size>0) {
+            submit.text = "Submitting.."
+        }
+        for (key in responses.keys) {
+            val responseRef = mStorageRef?.child("response_${toString}_$phone")?.child("q_${key +
+                    1}.aac")
+            responses[key]?.let {
+                responseRef?.putFile(it)
+                        ?.addOnSuccessListener(OnSuccessListener<UploadTask.TaskSnapshot> { taskSnapshot ->
+                            // Get a URL to the uploaded content
+                            submit.text = "Resubmit!"
+                            Toast.makeText(applicationContext, "Success", Toast.LENGTH_LONG).show()
+                        })
+                        ?.addOnFailureListener(OnFailureListener {
+                            // Handle unsuccessful uploads
+                            // ...
+                            submit.text = "Submit"
+                            Toast.makeText(applicationContext, it.localizedMessage, Toast.LENGTH_LONG).show()
+                        })
+            }
         }
     }
 }
